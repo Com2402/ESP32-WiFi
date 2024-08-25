@@ -124,10 +124,9 @@ void audioTask(void *parameter)
 			}
 		}
 		audio.loop();
-
 		if (!audio.isRunning())
 		{
-			sleep(1);
+			audio.stopSong();
 		}
 		yield();
 	}
@@ -196,7 +195,6 @@ bool audioConnecttohost(const char *host)
 // ---------------------------------------------------------------
 bool audioConnecttoSD(const char *filename)
 {
-	audio.stopSong();
 	// log_i("Start connect to SD");
 	audioTxMessage.cmd = CONNECTTOSD;
 	audioTxMessage.txt1 = filename;

@@ -9,11 +9,9 @@ static WiFiManager wifiManager;
 static AsyncWebServer server(80);
 static DNSServer dnsServer;
 static JSONVar wifiScanList;
-static const char *PARAM_INPUT_CHECKBOX = "useStaticIP";
 static const char *PARAM_INPUT_SSID = "ssid";
 static const char *PARAM_INPUT_PASS = "pass";
-static const char *PARAM_INPUT_IP = "ip";
-static const char *PARAM_INPUT_GATEWAY = "gateway";
+
 TaskHandle_t WifiCheckTask;
 void notFound(AsyncWebServerRequest *request)
 {

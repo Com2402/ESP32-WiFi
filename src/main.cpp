@@ -9,7 +9,7 @@ static SemaphoreHandle_t mutex;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-const char *ntpServer = "pool.ntp.org";
+const char ntpServer[] PROGMEM = "pool.ntp.org";
 const long gmtOffset_sec = 7 * 60 * 60; // Set your timezone here
 const int daylightOffset_sec = 0;
 unsigned long lastTime = 0;
