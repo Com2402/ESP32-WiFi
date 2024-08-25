@@ -30,7 +30,6 @@ void CreateQueues()
 void audioInit()
 {
 
-	log_i("freeheap %d ", ESP.getFreeHeap());
 	xTaskCreatePinnedToCore(
 		audioTask,			   /* Function to implement the task */
 		"audioplay",		   /* Name of the task */
@@ -44,7 +43,7 @@ void audioInit()
 // ---------------------------------------------------------------
 void audioTask(void *parameter)
 {
-	log_i("Start audio task");
+	// log_i("Start audio task");
 	CreateQueues();
 	if (!audioSetQueue || !audioGetQueue)
 	{
@@ -67,7 +66,6 @@ void audioTask(void *parameter)
 
 	while (true)
 	{
-		yield();
 		if (xQueueReceive(audioSetQueue, &audioRxTaskMessage, 1) == pdPASS)
 		{
 			switch (audioRxTaskMessage.cmd)
@@ -103,16 +101,16 @@ void audioTask(void *parameter)
 				break;
 			case CONNECTTOSD:
 				audioTxTaskMessage.cmd = CONNECTTOSD;
-				log_i("msg: %s", audioRxTaskMessage.txt1);
+				// log_i("msg: %s", audioRxTaskMessage.txt1);
 				audioTxTaskMessage.ret = audio.connecttoFS(SPIFFS, audioRxTaskMessage.txt1);
 				xQueueSend(audioGetQueue, &audioTxTaskMessage, portMAX_DELAY);
 				break;
 			case CONNECTTOSPEECH:
-				// Serial.printf("msg: %s \n", audioRxTaskMessage.txt1);
+				// log_i("msg: %s \n", audioRxTaskMessage.txt1);
 				audioTxTaskMessage.cmd = CONNECTTOSPEECH;
 				audioTxTaskMessage.ret = audio.connecttospeech(audioRxTaskMessage.txt1, audioRxTaskMessage.txt2);
 				xQueueSend(audioGetQueue, &audioTxTaskMessage, portMAX_DELAY);
-				// Serial.println(ESP.getFreeHeap());
+				// log_i("freeheap %d ", ESP.getFreeHeap());
 				break;
 			case AUDIO_STOP:
 				audioTxTaskMessage.cmd = AUDIO_STOP;
@@ -121,7 +119,7 @@ void audioTask(void *parameter)
 				xQueueSend(audioGetQueue, &audioTxTaskMessage, portMAX_DELAY);
 				break;
 			default:
-				log_i("Audio task: error");
+				// log_i("Audio task: error");
 				break;
 			}
 		}
@@ -145,7 +143,7 @@ audioMessage_t transmitReceive(audioMessage_t msg)
 		{
 			log_e("wrong reply from message queue");
 		}
-		// log_i("transmitReceive successfully");
+		// //log_i("transmitReceive successfully");
 	}
 	return audioRxMessage;
 }
@@ -165,7 +163,7 @@ void audioStopSong()
 // ---------------------------------------------------------------
 void audioSetVolume(uint8_t vol)
 {
-	log_i("audio start setvolume");
+	// log_i("audio start setvolume");
 	audioTxMessage.cmd = SET_VOLUME;
 	audioTxMessage.value = vol;
 	audioMessage_t RX = transmitReceive(audioTxMessage);
@@ -198,7 +196,8 @@ bool audioConnecttohost(const char *host)
 // ---------------------------------------------------------------
 bool audioConnecttoSD(const char *filename)
 {
-	log_i("Start connect to SD");
+	audio.stopSong();
+	// log_i("Start connect to SD");
 	audioTxMessage.cmd = CONNECTTOSD;
 	audioTxMessage.txt1 = filename;
 	audioMessage_t RX = transmitReceive(audioTxMessage);

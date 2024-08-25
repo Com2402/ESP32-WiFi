@@ -23,6 +23,7 @@ private:
     String _macAddr; // Mac address
     String _boxCode;
     StaticJsonDocument<760> userPaymentInfo;
+    String sync_response_topic = "/vqr/handle-box/response/";
 
     String base64_encode(uint8_t *data, size_t length);
     String HttpGet(String url, const char *authenType);
@@ -31,7 +32,7 @@ private:
 
 public:
     ClientHandler();
-    ~ClientHandler(){};
+    ~ClientHandler() {};
 
     void init();
     String generateAccessToken();
@@ -51,6 +52,7 @@ public:
     String getBankAccountBankCodeToStore();
     String getMacAddress();
     String getHomePage();
+    String getSyncBoxsTopic();
 
     void setBoxId(String boxId = "");
     void setAccessToken(String accessToken);

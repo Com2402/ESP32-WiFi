@@ -98,17 +98,18 @@ void switchToStaticQR(bool isQrCertificate, const char *qrStaticData)
   else
   {
     lv_qrcode_update(ui_staticQR, qrStaticData, strlen(qrStaticData));
-    log_i("ui_staticQR update");
+    // log_i("ui_staticQR update");
   }
 }
 
 void switchToDynamicQR(JSONVar &paymentInfo)
 {
+  transactionReceiveIdQrDynamic = paymentInfo["transactionReceiveId"];
   String lb_AmoutVale = String(static_cast<const char *>(paymentInfo["amount"])) + " VND";
   lv_label_set_text(ui_AmountValue, lb_AmoutVale.c_str());
   lv_label_set_text(ui_SoTaiKhoanDynamicQR, clientHandler.getBankAccount().c_str());
   lv_label_set_text(ui_ChuTaiKhoanDynamicQR, clientHandler.getUserBankName().c_str());
-  log_i("currHeap: %d \n", ESP.getFreeHeap());
+  // log_i("currHeap: %d \n", ESP.getFreeHeap());
   if (countNumberShowDynmicQR == 1)
   {
     if (ui_dynamicQR != nullptr)
@@ -122,7 +123,7 @@ void switchToDynamicQR(JSONVar &paymentInfo)
   else
   {
     lv_qrcode_update(ui_dynamicQR, static_cast<const char *>(paymentInfo["qrCode"]), strlen(static_cast<const char *>(paymentInfo["qrCode"])));
-    log_i("qrdynamic update ");
+    // log_i("qrdynamic update ");
   }
 
   // _ui_flag_modify(ui_TerminalNameDyn, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_TOGGLE);
@@ -138,9 +139,9 @@ void storePaymentInfo(String data, bool isTheFirstTime = false)
   // {
   // case DeserializationError::Ok:
   // {
-  //   log_i("parse data successfully");
+  //   //log_i("parse data successfully");
   //   serializeJsonPretty(userPaymentInfo, Serial);
-  //   log_i("\n");
+  //   //log_i("\n");
   // }
   // break;
 
@@ -177,7 +178,7 @@ void storePaymentInfo(String data, bool isTheFirstTime = false)
   if (isTheFirstTime == true)
   {
     // Store payment information
-    log_i("store payment info into file");
+    // log_i("store payment info into file");
     config.writePaymentInfo(data.c_str());
   }
 }
@@ -231,19 +232,22 @@ void setup()
   config.init();
   lv_slider_set_value(ui_BrightnessSlider, config.brightness_lv, LV_ANIM_OFF);
   lv_slider_set_value(ui_VolumeSlider, config.volume_lv, LV_ANIM_OFF);
-  Serial.println("Setup done!");
-  Serial.println();
+  Serial.println(F("Setup done!"));
 
   // delete old config
   WiFi.disconnect(true);
 
   clientHandler.init();
   clientHandler.setBoxId(config.readBoxId());
-  sync_response = sync_topic_prefix + "/response/" + clientHandler.getMacAddress();
-  if (clientHandler.getBoxId() != "" && clientHandler.getBoxId() != "None")
-    isSyncToServer = 1;
-  storePaymentInfo(config.readPaymentInfo());
 
+  if (clientHandler.getBoxId() != "" && clientHandler.getBoxId() != "None")
+    isSyncToServer = GET_BOXID_DONE;
+  storePaymentInfo(config.readPaymentInfo());
+  if (isSyncToServer == GET_BOXID_DONE && clientHandler.getStaticQR() != "")
+  {
+    // log_i("getStaticQR %s", clientHandler.getStaticQR().c_str());
+    isSyncToServer = GET_STATIC_QR_DONE;
+  }
   audioInit();
   networkConnector();
   startMqttClientTask();
@@ -274,47 +278,35 @@ void TaskConnectWiFi(void *pvParameters)
     deviceInfoList = lv_create_list_deviceInfo(ui_ContainerList);
 
     String boxId = clientHandler.getBoxId();
-    log_i("boxId: %s \n", boxId.c_str());
-    bool syncToServer = false;
+    // log_i("boxId: %s \n", boxId.c_str());
+
     if (boxId != "" && boxId != "None" && clientHandler.getBankAccount() != "" && clientHandler.getBankCode() != "")
     {
-      syncToServer = true;
-      // Store payment information to RAM
-      storePaymentInfo(config.readPaymentInfo());
-
       lv_label_set_text(ui_LinkWebSite, clientHandler.getHomePage().c_str());
-    }
-    else if (clientHandler.getBankAccount() == "" && clientHandler.getBankCode() == "")
-    {
-      log_i(" bankAccount is wrong\n");
-      syncToServer = false;
-      // vTaskDelay(20);
-    }
-
-    log_i("before if heep %d \n", ESP.getFreeHeap());
-    if (syncToServer)
-    { // All data already exists
+      // log_i("syncToserver Sucessfully, switch to static qrcode");
       lv_list_add_btn(deviceInfoList, NULL, String("TerCode: " + clientHandler.getTerminalCode()).c_str());
       switchToStaticQR(false, clientHandler.getStaticQR().c_str());
     }
-    else
+    else if (clientHandler.getBankAccount() == "" && clientHandler.getBankCode() == "")
     {
-
+      // log_i(" need to sync box before using");
       String qrCertificate = config.readQrCertificate();
-      log_i("qrCertificate %s ", qrCertificate.c_str());
+      clientHandler.setQrCertificate(qrCertificate);
+      // log_i("qrCertificate %s ", qrCertificate.c_str());
       if (qrCertificate != "" && qrCertificate != "None")
       {
-        clientHandler.setQrCertificate(qrCertificate);
-        isSyncToServer = 2;
+        isSyncToServer = GET_QR_CERTI_DONE;
+        lv_label_set_text(ui_SoTaiKhoanStaticQR, "Quét mã QR bằng ứng dụng");
+        lv_label_set_text(ui_ChuTaiKhoanStaticQR, "VietQR để kích hoạt");
+        switchToStaticQR(true, clientHandler.getQrCertificate().c_str());
       }
-      lv_label_set_text(ui_SoTaiKhoanStaticQR, "Quét mã QR bằng ứng dụng");
-      lv_label_set_text(ui_ChuTaiKhoanStaticQR, "VietQR để kích hoạt");
     }
-    log_i("after if heep %d \n", ESP.getFreeHeap());
+    // log_i("after if heep %d \n", ESP.getFreeHeap());
+    vTaskDelay(20);
 
-    xSemaphoreGive(mutex);
     // vTaskResume(ntTaskMqttClient);
     startWebServer();
+    xSemaphoreGive(mutex);
     wifiManager.autoReconnectWiFi();
   }
   else
@@ -356,15 +348,15 @@ void startMqttClientTask()
 
 void callbackMqtt(char *topic, byte *payload, unsigned int length)
 {
-  Serial.print("Message arrived in topic: ");
-  Serial.println(topic);
-  Serial.print("Message:");
-  for (int i = 0; i < length; i++)
-  {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-  Serial.println("-----------------------");
+  // log_i("Message arrived in topic: %s", topic);
+  // Serial.println(topic);
+  // Serial.print("Message:");
+  // for (int i = 0; i < length; i++)
+  // {
+  //   Serial.print((char)payload[i]);
+  // }
+  // Serial.println();
+  // Serial.println("-----------------------");
   // DynamicJsonDocument doc(2048);
   // deserializeJson(doc, (const byte *)payload, length);
   // serializeJson(doc, Serial);
@@ -372,17 +364,18 @@ void callbackMqtt(char *topic, byte *payload, unsigned int length)
 
   String str = String((char *)payload);
   JSONVar jsondata = JSON.parse(str);
-  if (String(topic) == sync_response)
+  if (String(topic) == clientHandler.getSyncBoxsTopic())
   {
     clientHandler.setBoxId(static_cast<const char *>(jsondata["boxId"]));
-    String topic = topic_prefix + "/" + clientHandler.getBoxId();
-    if (client.subscribe(topic.c_str()))
+    String topic = qr_topic_prefix + "/" + clientHandler.getBoxId();
+    if (client.subscribe(topic.c_str(), 1))
     {
-      log_i("syncBox: subscribe  %s successfully", topic.c_str());
+      // log_i("syncBox: subscribe  %s successfully", topic.c_str());
       clientHandler.setQrCertificate(static_cast<const char *>(jsondata["qrCertificate"]));
       config.writeQrCertificate(clientHandler.getQrCertificate().c_str());
       config.writeBoxId(clientHandler.getBoxId().c_str());
       switchToStaticQR(true, clientHandler.getQrCertificate().c_str());
+      isSyncToServer = GET_BOXID_DONE;
     }
     return;
   }
@@ -391,16 +384,22 @@ void callbackMqtt(char *topic, byte *payload, unsigned int length)
     String msgType = static_cast<const char *>(jsondata["notificationType"]);
     if (msgType == "N00")
     {
-      log_i("Connect Mqtt server successed \n");
+      // log_i("Connect Mqtt server successed \n");
     }
     else if (msgType == "N05")
     {
-      String amount = (const char *)jsondata["amount"];
-      // String message = "Thanh toán thành công " + amount + " VND."; //+ String((const char *)jsondata["bankAccount"]) + String((const char *)jsondata["bankName"]);
-      // log_i("msg %s \n", message.c_str());
-      lv_label_set_text(ui_SoTienDaThanhToan, String(amount).c_str());
-      // lv_label_set_text(ui_AccountName, clientHandler.getUserBankName().c_str());
-      _ui_screen_change(&ui_PaymentSuccess_S5, LV_SCR_LOAD_ANIM_FADE_ON, 50, 400, &ui_PaymentSuccess_S5_screen_init);
+      // Thông biến động số dư
+      const char *amount = (const char *)jsondata["amount"];
+      lv_label_set_text(ui_SoTienDaThanhToan, amount);
+      if (atTheQrStaticScreen)
+      {
+        showModalNotifyTranstion(amount);
+      }
+      else
+      {
+        _ui_screen_change(&ui_PaymentSuccess_S5, LV_SCR_LOAD_ANIM_FADE_ON, 100, 400, &ui_PaymentSuccess_S5_screen_init);
+        atTheQrStaticScreen = true;
+      }
       vTaskDelay(20);
       audioConnecttoSpeech((const char *)jsondata["message"], "vi-VN");
       countNumberShowDynmicQR = 1;
@@ -408,30 +407,37 @@ void callbackMqtt(char *topic, byte *payload, unsigned int length)
     else if (msgType == "N16")
     {
       // Store payment information
-      log_i("get static qr code \n");
       storePaymentInfo(str, true);
-
+      // log_i("staticQR %s", clientHandler.getStaticQR().c_str());
       lv_label_set_text(ui_LinkWebSite, clientHandler.getHomePage().c_str());
       switchToStaticQR(false, clientHandler.getStaticQR().c_str());
       vTaskDelay(20);
+      isSyncToServer = GET_STATIC_QR_DONE;
       audioConnecttoSD("/SamplesMP3/SyncBoxSuccess.mp3");
+      atTheQrStaticScreen = true;
     }
     else if (msgType == "N17")
     {
-      log_i("receive QR dynamic \n");
+      // log_i("receive QR dynamic \n");
       switchToDynamicQR(jsondata);
+      vTaskDelay(50);
       audioConnecttoSD("/SamplesMP3/TryQR.mp3");
+      atTheQrStaticScreen = false;
     }
     else if (msgType == "N12")
     {
-      log_i("Cancel QR dynamic \n");
+      // log_i("Cancel QR dynamic \n");
       countNumberShowDynmicQR = 1;
-      lv_label_set_text(ui_Label_Succesful, "Cancel Dynamic QRCode!");
-      lv_label_set_text(ui_SoTienDaThanhToan, "...");
-      _ui_screen_change(&ui_PaymentSuccess_S5, LV_SCR_LOAD_ANIM_FADE_ON, 50, 400, &ui_PaymentSuccess_S5_screen_init);
+      String transactionReceiveIdCancel = static_cast<const char *>(jsondata["transactionReceiveId"]);
+      if (transactionReceiveIdCancel == transactionReceiveIdQrDynamic)
+      {
+
+        lv_label_set_text(ui_Label_Succesful, "Đã huỷ QRCode!");
+        lv_label_set_text(ui_SoTienDaThanhToan, "...");
+        _ui_screen_change(&ui_PaymentSuccess_S5, LV_SCR_LOAD_ANIM_FADE_ON, 100, 400, &ui_PaymentSuccess_S5_screen_init);
+      }
     }
   }
-  vTaskDelay(50);
 }
 
 void reconnectMqttBroker()
@@ -441,29 +447,30 @@ void reconnectMqttBroker()
   {
     String client_id = "esp32-client-";
     client_id += String(WiFi.macAddress());
-    Serial.printf("The client %s connects to the public mqtt broker\n", client_id.c_str());
+    log_i("The client %s connects to the public mqtt broker\n", client_id.c_str());
     if (client.connect(client_id.c_str(), mqtt_username, mqtt_password))
     {
-      log_i("Public %s connected, (%d)", mqtt_broker, isSyncToServer);
-      if ((isSyncToServer == 0 || isSyncToServer == 1) && client.subscribe(sync_response.c_str()))
+      // log_i("Public %s connected, (%d)", mqtt_broker, isSyncToServer);
+      if ((isSyncToServer == NONE) && client.subscribe(clientHandler.getSyncBoxsTopic().c_str()))
       {
 
-        log_i("subscribe %s ", sync_response.c_str());
+        // log_i("subscribe %s ", clientHandler.getSyncBoxsTopic().c_str());
         JSONVar payload;
         payload["macAddr"] = clientHandler.getMacAddress();
         payload["checkSum"] = clientHandler.calculateChecksum();
-        log_i("checksum: %s", JSON.stringify(payload).c_str());
+        // log_i("checksum: %s", JSON.stringify(payload).c_str());
         if (client.publish(sync_topic_prefix.c_str(), JSON.stringify(payload).c_str()))
-          log_i("Message sent successfully, topic %s", sync_topic_prefix.c_str());
-      }
-      else if (isSyncToServer == 2)
-      {
-        String topic = topic_prefix + "/" + clientHandler.getBoxId();
-        if (client.subscribe(topic.c_str()))
         {
-          log_i("subscribe %s successfully", topic.c_str());
-          // log_i("clientHandler %s ", clientHandler.getQrCertificate().c_str());
-          switchToStaticQR(true, clientHandler.getQrCertificate().c_str());
+
+          // log_i("Message sent successfully, topic %s", sync_topic_prefix.c_str());
+        }
+      }
+      else if (isSyncToServer == GET_QR_CERTI_DONE || isSyncToServer == GET_STATIC_QR_DONE)
+      {
+        String topic = qr_topic_prefix + "/" + clientHandler.getBoxId();
+        if (client.subscribe(topic.c_str(), 1))
+        {
+          // log_i("subscribe %s successfully", topic.c_str());
         }
       }
     }
@@ -488,14 +495,14 @@ void TaskMqttClient(void *pvParameters)
   // {
   //   String client_id = "esp32-client-";
   //   client_id += String(WiFi.macAddress());
-  //   Serial.printf("The client %s connects to the public mqtt broker\n", client_id.c_str());
+  //   log_i("The client %s connects to the public mqtt broker\n", client_id.c_str());
   //   if (client.connect(client_id.c_str(), mqtt_username, mqtt_password))
   //   {
-  //     log_i("Public %s connected", mqtt_broker);
-  //     String topic = topic_prefix + "/" + clientHandler.getBoxId();
+  //     //log_i("Public %s connected", mqtt_broker);
+  //     String topic = qr_topic_prefix + "/" + clientHandler.getBoxId();
   //     if (client.subscribe(topic.c_str()))
   //     {
-  //       log_i("subscribe %s successfully", topic.c_str());
+  //       //log_i("subscribe %s successfully", topic.c_str());
   //     }
   //     else
   //     {
@@ -507,9 +514,9 @@ void TaskMqttClient(void *pvParameters)
   // }
   // String url = "/vqr/socket?boxId=";
   // url += clientHandler.getBoxId();
-  // Serial.printf("uri %s \n", url.c_str());
+  // log_i("uri %s \n", url.c_str());
 
-  // Serial.printf("heep %d \n", ESP.getFreeHeap());
+  // log_i("heep %d \n", ESP.getFreeHeap());
   // // webSocket.beginSSL("api.vietqr.org", 443, url.c_str());
   // webSocket.begin("112.78.1.209", 8084, url.c_str());
 
@@ -518,7 +525,6 @@ void TaskMqttClient(void *pvParameters)
 
   // // event handler
   // webSocket.onEvent(webSocketEvent);
-  Serial.println(ESP.getFreeHeap());
 
   while (1)
   {
@@ -582,12 +588,10 @@ lv_obj_t *lv_create_list_deviceInfo(lv_obj_t *obj)
   String message;
   // SSID infor
   message = "SSID: " + String(wifiManager.getSSID());
-  Serial.println(message);
   btn = lv_list_add_btn(list1, NULL, message.c_str());
 
   // IP info
   message = "IP: " + wifiManager.getIPAddress();
-  Serial.println(message);
   btn = lv_list_add_btn(list1, NULL, message.c_str());
 
   // MacAddress infor
@@ -616,12 +620,12 @@ void startWebServer()
             myArray[key] = (key ==  WiFi.SSID()) ? true : false ;
         }
       }
-      Serial.println(myArray);
+
       request->send(200, "text/html", JSON.stringify(myArray).c_str()); });
   // Setting webServer for wifi manager
   auto handleRequest = [&](AsyncWebServerRequest *request)
   {
-    log_i("Handle body request \n");
+    // log_i("Handle body request \n");
     StaticJsonDocument<256> jsonBuffer;
 
     auto resp = request;
@@ -678,7 +682,7 @@ void startWebServer()
                     }
                   
                 }
-                 log_i("indexChannelDelete: %d", indexChannelDelete);
+                 //log_i("indexChannelDelete: %d", indexChannelDelete);
                  wifiManager.delWifi(indexChannelDelete);
                  request->send(200, "text/html", "Delete channel success!"); });
 

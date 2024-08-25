@@ -51,7 +51,8 @@ void ClientHandler::init()
     esp_efuse_mac_get_default(mac);
     sprintf(Mac_address, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     _macAddr = String(Mac_address);
-    Serial.printf("Mac_address, %s\n", Mac_address);
+    log_i("Mac_address, %s\n", Mac_address);
+    sync_response_topic += _macAddr;
 
     // uint8_t MacAddress[8];
     // if (esp_efuse_mac_get_default(MacAddress) != ESP_OK)
@@ -169,12 +170,12 @@ String ClientHandler::HttpPost(String url, String data = "", const char *authenT
             http.setAuthorization(_accessToken.c_str());
         }
 
-        log_i("payload %s \n", data.c_str());
+        // log_i("payload %s \n", data.c_str());
         int httpCode = http.POST(data);
 
         if (httpCode > 0)
         {
-            log_i("HTTP Response code: %d \n ", httpCode);
+            // log_i("HTTP Response code: %d \n ", httpCode);
             Json = http.getString();
         }
         else
@@ -225,7 +226,7 @@ String ClientHandler::generateAccessToken()
     if (JSON.typeof_(myObject) == "undefined")
         if (JSON.typeof_(myObject) == "undefined")
         {
-            log_i("Parsing input failed! \n");
+            // log_i("Parsing input failed! \n");
             return "failed";
         }
     if (!myObject.hasOwnProperty("access_token"))
@@ -233,7 +234,7 @@ String ClientHandler::generateAccessToken()
     else // if (static_cast<const char *>(json["token_type"]) == "Bearer")
     {
         setAccessToken(static_cast<const char *>(json["access_token"]));
-        // log_i("accesstoken, %s \n", _accessToken.c_str());
+        // //log_i("accesstoken, %s \n", _accessToken.c_str());
         return "success";
     }
     return "failed";
@@ -276,6 +277,11 @@ String ClientHandler::getBoxId()
     return _boxId;
 }
 
+String ClientHandler::getSyncBoxsTopic()
+{
+    return sync_response_topic;
+}
+
 String ClientHandler::getMacAddress()
 {
     return _macAddr;
@@ -294,7 +300,7 @@ void ClientHandler::setQrCertificate(String qrCertificate)
 void ClientHandler::setBoxId(String boxId)
 {
     _boxId = boxId;
-    log_i(" _boxId: %s \n", _boxId.c_str());
+    // log_i(" _boxId: %s \n", _boxId.c_str());
 }
 
 String ClientHandler::getBankAccountBankCodeToStore()
@@ -309,9 +315,8 @@ bool ClientHandler::setPaymentInfo(String data)
     {
     case DeserializationError::Ok:
     {
-        log_i("parse data successfully");
-        // serializeJsonPretty(userPaymentInfo, Serial);
-        log_i("\n");
+        // log_i("parse data successfully");
+        //  serializeJsonPretty(userPaymentInfo, Serial);
         result = true;
         // clientHandler.setBankAccount(userPaymentInfo["bankAccount"].as<String>());
         // clientHandler.setBankCode(userPaymentInfo["bankCode"].as<String>());
@@ -402,21 +407,21 @@ String ClientHandler::getTerminalName()
 void ClientHandler::setBoxCode(String boxCode)
 {
     _boxCode = boxCode;
-    Serial.printf(" boxCode: %s \n", _boxCode.c_str());
+    log_i(" boxCode: %s \n", _boxCode.c_str());
 }
 
 void ClientHandler::setBankAccount(String bankAccount)
 {
 
     _bankAccount = bankAccount;
-    Serial.printf(" _bankAccount: %s \n", _bankAccount.c_str());
+    log_i(" _bankAccount: %s \n", _bankAccount.c_str());
 }
 
 void ClientHandler::setBankCode(String bankCode)
 {
 
     _bankCode = bankCode;
-    Serial.printf(" _bankCode: %s \n", _bankCode.c_str());
+    log_i(" _bankCode: %s \n", _bankCode.c_str());
 }
 void ClientHandler::setTerminalCode(String terminalCode)
 {
@@ -450,21 +455,21 @@ String ClientHandler::syncTID(const char *boxIP)
     payload["bankCode"] = _bankCode;
     payload["bankAccount"] = _bankAccount;
     String inputHash = _password + _bankCode + _bankAccount;
-    Serial.printf("inputHash, %s \n", inputHash.c_str());
+    log_i("inputHash, %s \n", inputHash.c_str());
     String checkSum = stringMD5(inputHash);
     payload["checkSum"] = checkSum.c_str();
-    Serial.printf("checkSum, %s \n", checkSum.c_str());
+    log_i("checkSum, %s \n", checkSum.c_str());
 
     // Serialize the json payload to String
     // String payload;
     // serializeJson(doc, payload);
     String apiUrl = baseUrl + "/tid-internal/sync";
-    log_i("apiURL: %s \n", apiUrl.c_str());
+    //log_i("apiURL: %s \n", apiUrl.c_str());
     String DataResult = HttpPost(apiUrl, payload.as<String>(), "Bearer");
     Serial.println("DataResult " + DataResult);
     if (setPaymentInfo(DataResult.c_str()) != DeserializationError::Code::Ok)
     {
-        log_i("Parsing input failed! \n");
+        //log_i("Parsing input failed! \n");
         return "failed";
     }
     if (!userPaymentInfo.containsKey("qrCode"))

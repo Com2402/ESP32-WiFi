@@ -5,7 +5,6 @@
 
 #ifndef _UI_EVENTS_H
 #define _UI_EVENTS_H
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -20,8 +19,9 @@ extern "C"
     void BrightnessLV_save_cb(lv_event_t *e);
     void VolumeLV_change_cb(lv_event_t *e);
     void dynamicQR_unloaded_cb(lv_event_t *e);
-    void goScreenStaticQR(lv_event_t *e);
+    void startTimerToGoScreenStaticQR(lv_event_t *e);
     void ResetTimer(lv_event_t *e);
+    void showModalNotifyTranstion(const char *tien);
 
 #ifdef __cplusplus
 } /*extern "C"*/

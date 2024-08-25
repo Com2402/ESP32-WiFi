@@ -14,7 +14,7 @@ void FileManager::init()
 // Read File from SPIFFS
 String FileManager::readFile(fs::FS &fs, const char *path)
 {
-  // Serial.printf("Reading file: %s\r\n", path);
+  // log_i("Reading file: %s\r\n", path);
 
   File file = fs.open(path);
   if (!file || file.isDirectory())
@@ -36,7 +36,7 @@ String FileManager::readFile(fs::FS &fs, const char *path)
 // Write file to SPIFFS
 void FileManager::writeFile(fs::FS &fs, const char *path, const char *message)
 {
-  // Serial.printf("Writing file: %s\r\n", path);
+  // log_i("Writing file: %s\r\n", path);
 
   File file = fs.open(path, FILE_WRITE);
   if (!file)
@@ -57,7 +57,7 @@ void FileManager::writeFile(fs::FS &fs, const char *path, const char *message)
 
 void FileManager::listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
-  // Serial.printf("Listing directory: %s\r\n", dirname);
+  // log_i("Listing directory: %s\r\n", dirname);
 
   File root = fs.open(dirname);
   if (!root)
@@ -96,7 +96,7 @@ void FileManager::listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 
 void FileManager::createDir(fs::FS &fs, const char *path)
 {
-  // Serial.printf("Creating Dir: %s\n", path);
+  // log_i("Creating Dir: %s\n", path);
   if (fs.mkdir(path))
   {
     // Serial.println("Dir created");
@@ -109,7 +109,7 @@ void FileManager::createDir(fs::FS &fs, const char *path)
 
 void FileManager::removeDir(fs::FS &fs, const char *path)
 {
-  // Serial.printf("Removing Dir: %s\n", path);
+  // log_i("Removing Dir: %s\n", path);
   if (fs.rmdir(path))
   {
     // Serial.println("Dir removed");
@@ -122,7 +122,7 @@ void FileManager::removeDir(fs::FS &fs, const char *path)
 
 void FileManager::appendFile(fs::FS &fs, const char *path, const char *message)
 {
-  // Serial.printf("Appending to file: %s\r\n", path);
+  // log_i("Appending to file: %s\r\n", path);
 
   File file = fs.open(path, FILE_APPEND);
   if (!file)

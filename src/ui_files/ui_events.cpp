@@ -9,7 +9,12 @@
 #include "./core/CYD28_audio.h"
 #include "./core/WiFiManager.h"
 #include "EEPROM.h"
+
 lv_obj_t *ui_dynamicQR;
+static lv_timer_t *timerNotify = nullptr;
+static int indexRecord = 0;
+static int currCount_timerNotify = 15;
+
 static void modal_btnAccept_event_cb(lv_event_t *e)
 {
 	lv_obj_t *obj = lv_event_get_current_target(e);
@@ -36,10 +41,9 @@ static void modal_btnCancel_event_cb(lv_event_t *e)
 	lv_obj_t *container = lv_obj_get_parent(obj);
 	lv_obj_t *parent_container = lv_obj_get_parent(container);
 	lv_obj_del(parent_container);
-	// if (lv_obj_has_state(ui_Switch1, LV_STATE_CHECKED))
-	// 	lv_obj_clear_state(ui_Switch1, LV_STATE_CHECKED);
 }
 
+// Reset account banking to link anothers
 static void modal_btnAccept_event_cb2(lv_event_t *e)
 {
 	lv_obj_t *obj = lv_event_get_current_target(e);
@@ -145,6 +149,109 @@ lv_obj_t *lv_create_modal(lv_obj_t *parent, const char *title, const char *txt, 
 	return container_modal;
 }
 
+// Create a modal message
+static void modal_btnGoHome_event_cb(lv_event_t *e)
+{
+	if (timerNotify != nullptr)
+		lv_timer_del(timerNotify);
+	lv_obj_t *obj = lv_event_get_current_target(e);
+	lv_obj_t *container = lv_obj_get_parent(obj);
+	// lv_obj_t *parent_container = lv_obj_get_parent(container);
+	lv_obj_del(container);
+	currCount_timerNotify = 15;
+}
+lv_obj_t *lv_create_modal_notify_transtion(lv_obj_t *parent, const char *title, const char *txt, lv_coord_t modal_width, lv_coord_t modal_height, const char *typeModel)
+{
+
+	lv_obj_t *container_modal_notify_transtion = lv_obj_create(parent);
+	LV_ASSERT_MALLOC(container_modal_notify_transtion);
+	if (container_modal_notify_transtion == NULL)
+		return NULL;
+	// css for container
+	lv_obj_set_size(container_modal_notify_transtion, LV_PCT(100), LV_PCT(100));
+	lv_obj_set_align(container_modal_notify_transtion, LV_ALIGN_CENTER);
+	lv_obj_clear_flag(container_modal_notify_transtion, LV_OBJ_FLAG_SCROLLABLE); /// Flags
+	lv_obj_set_style_bg_color(container_modal_notify_transtion, lv_color_hex(0xA39A9A), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_bg_opa(container_modal_notify_transtion, 170, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// create modal object
+	lv_obj_t *modal_transtion = lv_obj_create(container_modal_notify_transtion);
+	lv_obj_remove_style_all(modal_transtion);
+	lv_obj_set_size(modal_transtion, modal_width, modal_height);
+	lv_obj_set_align(modal_transtion, LV_ALIGN_CENTER);
+	lv_obj_clear_flag(modal_transtion, LV_OBJ_FLAG_SCROLLABLE); /// Flags
+	lv_obj_set_style_radius(modal_transtion, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_bg_color(modal_transtion, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_bg_opa(modal_transtion, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// create message text for modal
+	lv_obj_t *messages = lv_label_create(modal_transtion);
+	lv_obj_set_width(messages, LV_SIZE_CONTENT);  /// 1
+	lv_obj_set_height(messages, LV_SIZE_CONTENT); /// 1
+	lv_obj_set_align(messages, LV_ALIGN_CENTER);
+	// lv_obj_set_x(messages, 0);
+	lv_obj_set_y(messages, 20);
+	lv_obj_set_style_text_align(messages, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+	String notify = "Thanh toán thành công\n" + String(txt) + " đồng.";
+	lv_label_set_text(messages, notify.c_str());
+	lv_obj_set_style_text_line_space(messages, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_text_font(messages, &ui_font_arial16, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// create modal title
+	lv_obj_t *modal_title = lv_label_create(modal_transtion);
+	lv_obj_set_width(modal_title, LV_SIZE_CONTENT);	 /// 1
+	lv_obj_set_height(modal_title, LV_SIZE_CONTENT); /// 1
+	lv_obj_set_x(modal_title, 0);
+	lv_obj_set_y(modal_title, 5);
+	lv_obj_set_align(modal_title, LV_ALIGN_TOP_MID);
+	lv_label_set_text(modal_title, title);
+	lv_obj_set_style_text_font(modal_title, &ui_font_arialbold18, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// Icon sucesfully
+	lv_obj_t *modal_title_icon = lv_btn_create(modal_transtion);
+	lv_obj_remove_style_all(modal_title_icon);
+	lv_obj_set_width(modal_title_icon, 50);	 /// 1
+	lv_obj_set_height(modal_title_icon, 50); /// 1
+	lv_obj_set_y(modal_title_icon, 40);
+	lv_obj_set_align(modal_title_icon, LV_ALIGN_TOP_MID);
+	lv_obj_clear_flag(modal_title_icon, LV_OBJ_FLAG_SCROLLABLE); /// Flags
+	lv_obj_set_style_bg_color(modal_title_icon, lv_color_hex(0x02FE69), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_radius(modal_title_icon, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_bg_opa(modal_title_icon, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	lv_obj_clear_flag(modal_title_icon, LV_OBJ_FLAG_CLICKABLE); /// Flags
+
+	lv_obj_t *modal_title_icon_lable = lv_label_create(modal_title_icon);
+	lv_obj_set_width(modal_title_icon_lable, LV_SIZE_CONTENT);	/// 1
+	lv_obj_set_height(modal_title_icon_lable, LV_SIZE_CONTENT); /// 1
+	lv_obj_set_align(modal_title_icon_lable, LV_ALIGN_CENTER);
+	lv_label_set_text(modal_title_icon_lable, LV_SYMBOL_OK);
+	lv_obj_set_style_text_color(modal_title_icon_lable, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_text_opa(modal_title_icon_lable, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+	lv_obj_set_style_text_font(modal_title_icon_lable, &lv_font_montserrat_30, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// btnCancel
+	// lv_obj_t *btnCancel = lv_btn_create(modal);
+	// lv_obj_set_width(btnCancel, modal_width);
+	// lv_obj_set_height(btnCancel, 35);
+	// lv_obj_set_align(btnCancel, LV_ALIGN_BOTTOM_RIGHT);
+	// lv_obj_clear_flag(btnCancel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
+	// lv_obj_set_style_bg_color(btnCancel, lv_color_hex(0x33CCFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+	// lv_obj_set_style_bg_opa(btnCancel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	// lv_obj_t *btnCancelLable = lv_label_create(btnCancel);
+	// lv_obj_set_width(btnCancelLable, LV_SIZE_CONTENT);	/// 1
+	// lv_obj_set_height(btnCancelLable, LV_SIZE_CONTENT); /// 1
+	// lv_obj_set_align(btnCancelLable, LV_ALIGN_CENTER);
+	// lv_label_set_text(btnCancelLable, "Trở về");
+	// lv_obj_set_style_text_color(btnCancelLable, lv_color_hex(0x0E0E0E), LV_PART_MAIN | LV_STATE_DEFAULT);
+	// lv_obj_set_style_text_opa(btnCancelLable, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+	// lv_obj_set_style_text_font(btnCancelLable, &ui_font_arialbold16, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+	lv_obj_add_event_cb(modal_transtion, modal_btnGoHome_event_cb, LV_EVENT_CLICKED, NULL);
+	return container_modal_notify_transtion;
+}
+
 void create_msgbox(void)
 {
 	lv_obj_t *mbox1 = lv_create_modal(ui_StaticQR, "Thông báo", "Đặt lại \nTất cả cấu hình WiFi?", 200, 100, "WiFi");
@@ -156,14 +263,32 @@ void showModalResetWiFi(lv_event_t *e)
 	create_msgbox();
 }
 
-int indexRecord = 0;
+void timerNotify_cb(lv_timer_t *t)
+{
+	if (lv_scr_act() != ui_StaticQR)
+		return;
+	currCount_timerNotify--;
+	// log_i("currCount_timerNotify %d", currCount_timerNotify);
+	if (currCount_timerNotify == 0 && t != nullptr)
+	{
+		// log_i("Delete timerNotify cb, then go home \n");
+		currCount_timerNotify = 15;
+		lv_obj_del((lv_obj_t *)t->user_data);
+		lv_timer_del(t);
+	}
+}
+
+void showModalNotifyTranstion(const char *tien)
+{
+	lv_obj_t *mboxNotiFyTranstion = lv_create_modal_notify_transtion(ui_StaticQR, "Thông báo", tien, 200, 180, "BankAccount");
+	timerNotify = lv_timer_create(timerNotify_cb, 1000, (void *)mboxNotiFyTranstion);
+}
+
 void play_audio(lv_event_t *e)
 {
 	// Your code here
-	log_i("Play audio");
-	// 	uint32_t vol = (config.volume_lv * 21) / 100;
-	// audioSetVolume(vol);
-
+	// log_i("Play audio");
+	// showModalNotifyTranstion("100000000");
 	switch (indexRecord)
 	{
 	case 0:
@@ -185,8 +310,6 @@ void play_audio(lv_event_t *e)
 	indexRecord += 1;
 	if (indexRecord >= 3)
 		indexRecord = 0;
-
-	// lv_timer_t *VU_updateTimer = lv_timer_create(VU_updateTimer_cb, 60, NULL);
 }
 
 void BrightnessLV_change_cb(lv_event_t *e)
@@ -204,7 +327,7 @@ void BrightnessLV_save_cb(lv_event_t *e)
 	// Your code here
 	EEPROM.writeInt(EEPROM_ADDR_BRIGHTNESS_LEVEL, config.brightness_lv);
 	EEPROM.commit();
-	Serial.printf("Brightness: %d \n", config.brightness_lv);
+	log_i("Brightness: %d \n", config.brightness_lv);
 }
 
 void VolumeLV_change_cb(lv_event_t *e)
@@ -214,59 +337,30 @@ void VolumeLV_change_cb(lv_event_t *e)
 	config.volume_lv = lv_slider_get_value(slider);
 	EEPROM.writeInt(EEPROM_ADDR_VOLUME_LEVEL, config.volume_lv);
 	EEPROM.commit();
-	Serial.printf("Volume level: %d \n", config.volume_lv);
+	log_i("Volume level: %d \n", config.volume_lv);
 	uint32_t vol = (config.volume_lv * 21) / 100;
 	audioSetVolume(vol);
 }
 
-// void deleted_cb(_lv_anim_t *a)
-// {
-// 	lv_mem_free(a->user_data);
-// 	a->user_data = NULL;
-// 	lv_obj_add_flag(ui_saveSuccess, LV_OBJ_FLAG_HIDDEN);
-// }
-
-// void showIconSuccess()
-// {
-// 	if (lv_obj_has_flag(ui_saveSuccess, LV_OBJ_FLAG_HIDDEN))
-// 		lv_obj_clear_flag(ui_saveSuccess, LV_OBJ_FLAG_HIDDEN);
-// 	lv_anim_t a;
-// 	lv_anim_init(&a);
-// 	/*Set target of the animation*/
-// 	lv_anim_set_var(&a, ui_saveSuccess);
-// 	lv_anim_set_time(&a, 1000);
-// 	/*Set a callback to indicate when the animation is deleted (idle).*/
-// 	lv_anim_set_deleted_cb(&a, deleted_cb);
-// 	lv_anim_start(&a);
-// }
-
-void ScreenUnloadStartEvent_cb(lv_event_t *e)
-{
-	// Your code here
-	printf("Delete timer \n");
-}
-
-static char prevDirGesture = 'N';
-
 void ScreenloadStartEvent_cb(lv_event_t *e)
 {
 	// Your code here
-	printf("ScreenloadStartEvent_cb\n");
 	lv_label_set_text(ui_LableBTNNext, LV_SYMBOL_RIGHT);
 	lv_label_set_text(ui_LableBTNBack, LV_SYMBOL_LEFT);
 }
 
 lv_timer_t *timerCounter;
-static int currCount = 30;
+static int currCount = 15;
+
 void timerCounter_cb(lv_timer_t *t)
 {
 	if (lv_scr_act() != ui_PaymentSuccess_S5)
-		return; // update only in audio tab
+		return;
 	currCount--;
 	if (currCount == 0 && t != nullptr)
 	{
-		log_i("Delete timerCounter cb, then go home \n");
-		currCount = 30;
+		// log_i("Delete timerCounter cb, then go home \n");
+		currCount = 15;
 		lv_timer_del(t);
 		_ui_screen_change(&ui_StaticQR, LV_SCR_LOAD_ANIM_FADE_ON, 50, 400, &ui_StaticQR_screen_init);
 	}
@@ -275,6 +369,9 @@ void timerCounter_cb(lv_timer_t *t)
 void ResetTimer(lv_event_t *e)
 {
 	// Your code here
+	if (timerCounter != nullptr)
+		lv_timer_del(timerCounter);
+	_ui_screen_change(&ui_StaticQR, LV_SCR_LOAD_ANIM_FADE_ON, 50, 400, &ui_StaticQR_screen_init);
 }
 
 void btnResetAccount_Cb(lv_event_t *e)
@@ -303,8 +400,8 @@ void homeScreenUnload_cb(lv_event_t *e)
 	}
 }
 
-void goScreenStaticQR(lv_event_t *e)
+void startTimerToGoScreenStaticQR(lv_event_t *e)
 {
 	// Your code here
-	lv_timer_t *timerCounter = lv_timer_create(timerCounter_cb, 1000, NULL);
+	timerCounter = lv_timer_create(timerCounter_cb, 1000, NULL);
 }

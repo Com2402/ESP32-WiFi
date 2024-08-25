@@ -26,13 +26,13 @@ WiFiManager &wifiManager = getInstanceWF();
 
 typedef enum
 {
-  NONE,
-  NETWORK_SEARCHING,
-  NETWORK_CONNECTED_POPUP,
-  NETWORK_CONNECTED,
-  NETWORK_CONNECT_FAILED
-} Network_Status_t;
-Network_Status_t networkStatus = NONE;
+  NONE = 0,
+  GET_BOXID_DONE = 1,
+  GET_QR_CERTI_DONE = 1,
+  GET_STATIC_QR_DONE = 2,
+  MAX,
+} QR_STATUS;
+QR_STATUS isSyncToServer = NONE;
 
 // Touchscreen pins
 #define XPT2046_IRQ 36  // T_IRQ
@@ -99,12 +99,12 @@ String processorBoxQrSetting(const String &var)
 
 // MQTT Broker
 const char *mqtt_broker = "api.vietqr.org";
-String topic_prefix = "/vietqr/boxId";
+String qr_topic_prefix = "vietqr/boxId";
 String sync_topic_prefix = "/vqr/handle-box";
-String sync_response;
+
 const char *mqtt_username = "vietqrprodAdmin123";
 const char *mqtt_password = "vietqrbns123";
 const int mqtt_port = 1883;
-
-int isSyncToServer = 0;
+static bool atTheQrStaticScreen = true;
+String transactionReceiveIdQrDynamic = "";
 #endif

@@ -146,7 +146,7 @@ bool WiFiManager::connectWiFi()
             {
                 if (apList[i].apName.length() == 0 || apList[i].apName != ssidLocal)
                     continue;
-                log_i("ssid: %s, rssi: %d", apList[i].apName, rssi);
+                // log_i("ssid: %s, rssi: %d", apList[i].apName, rssi);
                 if (rssi > choosenRssi)
                 {
                     if (encryptionType == WIFI_AUTH_OPEN || apList[i].apPass.length() > 0)
@@ -167,9 +167,9 @@ bool WiFiManager::connectWiFi()
     }
     else
     {
-        Serial.printf("[WIFI] Trying to connect to SSID %s with password %s.\n",
-                      apList[choosenAp].apName.c_str(),
-                      (apList[choosenAp].apPass.length() > 0 ? apList[choosenAp].apPass.c_str() : "''"));
+        log_i("[WIFI] Trying to connect to SSID %s with password %s.\n",
+              apList[choosenAp].apName.c_str(),
+              (apList[choosenAp].apPass.length() > 0 ? apList[choosenAp].apPass.c_str() : "''"));
 
         WiFi.begin(apList[choosenAp].apName.c_str(), apList[choosenAp].apPass.c_str());
         // Serial.println("Connecting to WiFi...");
@@ -195,9 +195,9 @@ bool WiFiManager::connectWiFi()
             rssi = WiFi.RSSI();
             ssid = WiFi.SSID();
             Serial.println(F("[WIFI] Connection successful."));
-            Serial.printf("[WIFI] SSID   : %s\n", WiFi.SSID().c_str());
-            Serial.printf("[WIFI] IP     : %s\n", ip.c_str());
-            Serial.printf("[WIFI] RSSI   : %d\n", rssi);
+            log_i("[WIFI] SSID   : %s\n", WiFi.SSID().c_str());
+            log_i("[WIFI] IP     : %s\n", ip.c_str());
+            log_i("[WIFI] RSSI   : %d\n", rssi);
             String rssiValue = String(WiFi.RSSI() + 100) + "%";
             lv_label_set_text(ui_RssiValue, rssiValue.c_str());
             return true;
@@ -261,7 +261,7 @@ void WiFiManager::startAP(String ssidAP)
     Serial.println(high);
     if (ssidAP == "")
         ssidAP = "VietQR_" + String(high);
-    log_i("ssidAP: %s", ssidAP.c_str());
+    // log_i("ssidAP: %s", ssidAP.c_str());
     status = true;
     // WiFi.scanNetworks will return the number of networks found.
     WiFi.mode(WIFI_AP_STA);
@@ -275,10 +275,10 @@ void WiFiManager::startAP(String ssidAP)
     }
     else
     {
-        log_i("%d networks found ", n);
-        log_i(" Nr | SSID                             | RSSI | CH | Encryption \n");
-        // if (n > 6)
-        //     n = 6;
+        // log_i("%d networks found ", n);
+        // log_i(" Nr | SSID                             | RSSI | CH | Encryption \n");
+        //  if (n > 6)
+        //      n = 6;
         for (int i = 0; i < 6; ++i)
         {
             if (WiFi.encryptionType(i) != WIFI_AUTH_OPEN && WiFi.encryptionType(i) != WIFI_AUTH_WEP)
@@ -289,7 +289,7 @@ void WiFiManager::startAP(String ssidAP)
             }
 
             // Print SSID and RSSI for each network found
-            log_i("%2d  | %-32.32s  | %4d  |  %2d  | %2d ", i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i), WiFi.encryptionType(i));
+            // log_i("%2d  | %-32.32s  | %4d  |  %2d  | %2d ", i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.channel(i), WiFi.encryptionType(i));
         }
     }
 
@@ -297,12 +297,14 @@ void WiFiManager::startAP(String ssidAP)
     WiFi.scanDelete();
 
     //  initialize the ESP32 in Access Point mode
-    log_i("[WIFI] Starting configuration portal on AP SSID %s, pass: %s\n", ssidAP.c_str(), passAP);
+    // log_i("[WIFI] Starting configuration portal on AP SSID %s, pass: %s\n", ssidAP.c_str(), passAP);
     // WiFi.mode(WIFI_AP);
     // bool state = WiFi.softAP(ssidAP.c_str(), passAP);
     bool state = WiFi.softAP(ssidAP.c_str());
     if (state)
-        log_i("WiFi softAp run sucessfully");
+    {
+        // log_i("WiFi softAp run sucessfully");
+    }
 
     IPAddress IP = WiFi.softAPIP();
     Serial.print("AP IP address: ");
@@ -316,7 +318,7 @@ void WiFiManager::startAP(String ssidAP)
     // Setting webServer for wifi manager
     auto handleRequest = [&](AsyncWebServerRequest *request)
     {
-        log_i("Handle body request \n");
+        // log_i("Handle body request \n");
         StaticJsonDocument<256> jsonBuffer;
 
         auto resp = request;
@@ -365,7 +367,7 @@ void WiFiManager::startAP(String ssidAP)
     server.on("/addWiFi", HTTP_POST, handleRequest);
 
     // Start DNS Server
-    log_i("Starting DNS Server");
+    // log_i("Starting DNS Server");
 
     dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     dnsServer.start(DNS_PORT, F("*"), WiFi.softAPIP());
@@ -403,8 +405,7 @@ void WiFiManager::autoReconnectWiFi()
                 // lv_label_set_text(ui_WiFiStatus, "");
                 _ui_flag_modify(ui_ContainerWiFIStatus, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_TOGGLE);
             }
-            // Serial.print(millis());
-            Serial.println(" Reconnecting to WiFi...");
+            // Serial.println(F(" Reconnecting to WiFi..."));
 
             if (!connectWiFi())
                 count_retry_connect++;
@@ -428,13 +429,13 @@ void WiFiManager::autoReconnectWiFi()
                 {
                     String rssiValue = String(WiFi.RSSI() + 100) + "%";
                     lv_label_set_text(ui_RssiValue, rssiValue.c_str());
-                    log_i("%s, WiFi is still connected, rssi: %s", ssid.c_str(), rssiValue.c_str());
+                    // log_i("%s, WiFi is still connected, rssi: %s", ssid.c_str(), rssiValue.c_str());
                     break;
                 }
             }
             if (audioTaskHandler_suspend == true)
             {
-                Serial.println("Reconnect to WiFi Success -> task resum");
+                // Serial.println(F("Reconnect to WiFi Success -> task resum"));
                 // vTaskResume(audioTaskHandler);
                 _ui_state_modify(ui_PlayAudio, LV_STATE_DISABLED, _UI_MODIFY_STATE_REMOVE);
                 // lv_label_set_text(ui_WiFiStatus, LV_SYMBOL_WIFI);
@@ -543,7 +544,7 @@ bool WiFiManager::addWifi(String apName, String apPass, bool updateNVS, bool fro
         Serial.println(F("[WIFI] Passphrase too long"));
         return false;
     }
-    log_i("configuredSSIDs %d ", configuredSSIDs);
+    // log_i("configuredSSIDs %d ", configuredSSIDs);
     if (configuredSSIDs >= WIFIMANAGER_MAX_APS)
     {
         if (!fromAP)
@@ -568,7 +569,7 @@ bool WiFiManager::addWifi(String apName, String apPass, bool updateNVS, bool fro
         {
             if (apList[i].apName == "")
             {
-                Serial.printf("[WIFI] Found unused slot Nr. %d to store the new SSID '%s' credentials.\n", i, apName.c_str());
+                log_i("[WIFI] Found unused slot Nr. %d to store the new SSID '%s' credentials.\n", i, apName.c_str());
                 apList[i].apName = apName;
                 apList[i].apPass = apPass;
                 configuredSSIDs++;

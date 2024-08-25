@@ -47,6 +47,5 @@ bool audioConnecttohost(const char *host);
 bool audioConnecttoSD(const char *filename);
 bool audioConnecttoSpeech(const char *host, const char *lang);
 void audioStopSong();
-void setVuMeters(uint32_t vuRL);
 
 #endif // _AUDIO_H_

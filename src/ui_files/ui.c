@@ -730,9 +730,9 @@ void ui_event_PaymentSuccess_S5(lv_event_t *e)
     lv_obj_t *target = lv_event_get_target(e);
     if (event_code == LV_EVENT_SCREEN_LOAD_START)
     {
-        goScreenStaticQR(e);
+        startTimerToGoScreenStaticQR(e);
     }
-    if (event_code == LV_EVENT_SCREEN_UNLOAD_START)
+    if (event_code == LV_EVENT_CLICKED)
     {
         ResetTimer(e);
     }

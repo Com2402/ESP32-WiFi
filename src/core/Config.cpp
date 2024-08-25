@@ -31,7 +31,7 @@ void Config::init()
 
     brightness_lv = EEPROM.readInt(EEPROM_ADDR_BRIGHTNESS_LEVEL);
     volume_lv = EEPROM.readInt(EEPROM_ADDR_VOLUME_LEVEL);
-    // Serial.printf("brightness_lv %d, volume_lv %d \n", brightness_lv, volume_lv);
+    // log_i("brightness_lv %d, volume_lv %d \n", brightness_lv, volume_lv);
 
     mFileManager.init();
     // File filePayMentInfo = SPIFFS.open(paymentInfoPath);
