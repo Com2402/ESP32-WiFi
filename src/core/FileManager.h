@@ -3,10 +3,6 @@
 #include "SPIFFS.h"
 #include "FS.h"
 
-// define library for LittleFS manage
-// #include <LittleFS.h>
-// #define SPIFFS LittleFS
-
 #define FORMAT_LITTLEFS_IF_FAILED true
 class FileManager
 {

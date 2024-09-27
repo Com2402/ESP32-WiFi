@@ -2,13 +2,13 @@
 // FileManager fileManager;
 void FileManager::init()
 {
-  if (!SPIFFS.begin(true))
+  if (!SPIFFS.begin(FORMAT_LITTLEFS_IF_FAILED))
   {
     // Serial.println("An error has occurred while mounting LittleFS");
     return;
   }
   // Serial.println("File mounted successfully");
-  listDir(SPIFFS, "/", 3); // List the directories up to one level beginning at the root directory
+  listDir(SPIFFS, "/", 3); 
 }
 
 // Read File from SPIFFS
