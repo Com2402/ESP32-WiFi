@@ -6,34 +6,36 @@
 #include <WiFi.h> 
 #include "WiFiManager.h"
 #include <WiFiManager.h>
+#include <EEPROM.h>
+#include "esp_mac.h"
 struct neworkItem
 {
     String ssid;
     String password;
 };
-
 class Config
 {
 public:
     neworkItem ssids[5];
-    String defaultWifiConfig = "{\"ID\":[{\"ssid\": \"WIFI\",\"password\": \"24022002\"}, {\"ssid\": \"2\",\"password\": \"12345678\"}, {\"ssid\": \"3\",\"password\": \"12345678\"}, {\"ssid\": \"4\",\"password\": \"12345678\"}, {\"ssid\": \"5\",\"password\": \"12345678\"}]}";
+    Config() {}
+    String defaultWifiConfig =  "{\"ID\":[{\"ssid\": \"WIFI1\",\"password\": \"24022002\"}, {\"ssid\": \"WIFI2\",\"password\": \"12345678\"}, {\"ssid\": \"WIFI3\",\"password\": \"12345678\"}, {\"ssid\": \"WIFI4\",\"password\": \"12345678\"}, {\"ssid\": \"WIFI5\",\"password\": \"12345678\"}]}";
     int index = 0;
+    
 public:
-    Config() {};
+    
     void init();
+    void addWifiConfig(String ssid, String password);
+    void ConnectWiFi();
 
 private:
     
     FileManager mFileManager;
-    const char wifiConfigPath[24] = "/config/wifiConfig.json";
+    const char wifiConfigPath[24] = "/wifiConfig.json";
     WiFiManager wm; 
 public:
     String readWiFiConfig();
     void writeWiFiConfig(const char *data);
-    void loadWifiConfig(const char *data);
-    void ConnectWiFi();
-    void addWifiConfig(String ssid, String password);
-    
+    void checkWiFiConnect();
 };
 
 extern Config config;

@@ -4,90 +4,166 @@ Config config;
 
 void Config::init()
 {
-    
-    mFileManager.init();
+     mFileManager.init();
 }
 
 String Config::readWiFiConfig()
 {
     return mFileManager.readFile(SPIFFS, wifiConfigPath);
 }
-
-
 void Config::writeWiFiConfig(const char *data)
 {
     mFileManager.writeFile(SPIFFS, wifiConfigPath, data);
 }
-
-void Config::loadWifiConfig(const char *data)
-{
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, data);
-  JsonArray wifiArray = doc["ID"];
-  
-  int i = 0;
-  for (JsonObject wifidoc : wifiArray) {
-    ssids[i].ssid = wifidoc["ssid"].as<String>();
-    ssids[i].password = wifidoc["password"].as<String>();
-    
-    Serial.print("SSID: ");
-    Serial.println(ssids[i].ssid);
-    Serial.print("Password: ");
-    Serial.println(ssids[i].password);
-    i++;
-    if (i > 4) break; 
-  }
-
-}
 void Config::addWifiConfig(String ssid, String password) {
-    if (index < 5) {
-        ssids[index].ssid = ssid;
-        ssids[index].password = password;
-        index++; 
-    } else {
+    String wifiConfig = readWiFiConfig(); 
+    DynamicJsonDocument doc(1024);   
+    DeserializationError error = deserializeJson(doc, wifiConfig);
+
+    JsonArray networks = doc["ID"].as<JsonArray>();
+
+    JsonObject newWifi = networks.add<JsonObject>();
+    newWifi["ssid"] = ssid;
+    newWifi["password"] = password;
+    if (networks.size() > 5) {
+        networks.remove(0);
+    }
+    String updatedConfig;
+    serializeJson(doc, updatedConfig);
+    writeWiFiConfig(updatedConfig.c_str());
+
+    Serial.println("Updated WiFi Config:");
+    Serial.println(updatedConfig);
+}
+void Config::ConnectWiFi() {
+    WiFiManager wm;
+
+    
+    String wifiConfig = readWiFiConfig();
+    
+    if (wifiConfig.length() > 0) {
+      
+        DynamicJsonDocument doc(1024);
+        DeserializationError error = deserializeJson(doc, wifiConfig);
         
-        for (int i = 1; i < 5; i++) {
-            ssids[i - 1] = ssids[i]; 
+        if (!error && doc.containsKey("ID")) {
+            JsonArray networks = doc["ID"];
+            for (JsonObject wifi : networks) {
+                String ssid = wifi["ssid"].as<String>();
+                String password = wifi["password"].as<String>();
+
+                Serial.printf("Connect to %s\n", ssid.c_str());
+                
+                WiFi.begin(ssid.c_str(), password.c_str());
+                int attempts = 0;
+                while (WiFi.status() != WL_CONNECTED && attempts < 10) {
+                    delay(500);
+                    Serial.print(".");
+                    attempts++;
+                }
+                
+                if (WiFi.status() == WL_CONNECTED) {
+                    Serial.printf("\nConnected to %s\n", ssid.c_str());
+                    return;
+                } else {
+                    Serial.printf("\nFailed to connect to %s\n", ssid.c_str());
+                }
+            }
         }
-        ssids[4].ssid = ssid; 
-        ssids[4].password = password;
     }
 
-    
-    String newConfig = "{\"ID\":[";
-    for (int j = 0; j < index; j++) {
-        newConfig += "{\"ssid\": \"" + ssids[j].ssid + "\", \"password\": \"" + ssids[j].password + "\"}";
-        if (j < index - 1) newConfig += ",";
+    Serial.println("Starting AP mode");
+    wm.setConfigPortalTimeout(180);
+    if (wm.autoConnect("ESP_AP")) {
+        Serial.println("Connected to WiFi via Config Portal");
+        String newSsid = WiFi.SSID();
+        String newPassword = WiFi.psk();
+        addWifiConfig(newSsid, newPassword);
+        Serial.println("Updated WiFi configurations:");
+        Serial.println(readWiFiConfig());
+    } else {
+        Serial.println("Failed to connect and hit timeout");
+        ESP.restart();
     }
-    newConfig += "]}";
-    writeWiFiConfig(newConfig.c_str()); 
 }
-void Config::ConnectWiFi(){
-    for(int i = 0; i < index ;i++){
-        WiFi.begin(ssids[i].ssid.c_str(), ssids[i].password.c_str());
-        int attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 3) {
-            delay(500);
-            Serial.print(".");
-            attempts++;
-        }
-
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.println();
-            Serial.print("Connected to WiFi: ");
-            Serial.println(ssids[i].ssid);
-            return; 
-        } else {
-            Serial.println();
-            Serial.print("Failed to connect");
-
-        }
-    
+void Config::checkWiFiConnect(){
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi connection lost, starting AP mode");
+      
+        WiFiManager wm;
+       if (wm.autoConnect("ESP_AP")) {
+        Serial.println("Connected to WiFi via Config Portal");
+        String newSsid = WiFi.SSID();
+        String newPassword = WiFi.psk();
+        addWifiConfig(newSsid, newPassword);
+    } else {
+        Serial.println("Failed to connect and hit timeout");
+        ESP.restart();
     }
-    wm.autoConnect("ConnectAP");
-    String ssid = WiFi.SSID(); 
-    String password = WiFi.psk();
-    config.addWifiConfig(ssid, password);
-    Serial.println("New WiFi Config Saved:"); 
-   
+    }
 }
+
+
+
+
+
+
+// void Config::ConnectWiFi() {
+//     WiFiManager wm;
+
+//     // Đọc cấu hình WiFi từ SPIFFS
+//     String wifiConfig = readWiFiConfig();
+    
+//     if (wifiConfig.length() > 0) {
+//         // Parse JSON
+//         DynamicJsonDocument doc(1024);
+//         DeserializationError error = deserializeJson(doc, wifiConfig);
+        
+//         if (!error && doc.containsKey("ID")) {
+//             JsonArray networks = doc["ID"];
+//             // Thử kết nối với từng mạng WiFi đã lưu
+//             for (JsonObject wifi : networks) {
+//                 String ssid = wifi["ssid"].as<String>();
+//                 String password = wifi["password"].as<String>();
+
+//                 Serial.printf("Attempting to connect to %s\n", ssid.c_str());
+                
+//                 WiFi.begin(ssid.c_str(), password.c_str());
+//                 int attempts = 0;
+//                 while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+//                     delay(500);
+//                     Serial.print(".");
+//                     attempts++;
+//                 }
+                
+//                 if (WiFi.status() == WL_CONNECTED) {
+//                     Serial.printf("\nConnected to %s\n", ssid.c_str());
+//                     return;
+//                 } else {
+//                     Serial.printf("\nFailed to connect to %s\n", ssid.c_str());
+//                 }
+//             }
+//         }
+//     }
+
+//     // Nếu không thể kết nối với bất kỳ mạng nào đã lưu
+//     Serial.println("Starting AP mode");
+    
+//     // Cấu hình cho AP
+//     wm.setConfigPortalTimeout(180); // 3 minutes timeout
+
+//     if (wm.startConfigPortal("ESP_AP")) {
+//         Serial.println("Connected to WiFi via Config Portal");
+//         String newSsid = WiFi.SSID();
+//         String newPassword = WiFi.psk();
+        
+//         // Thêm cấu hình WiFi mới (sẽ tự động xử lý FIFO trong addWifiConfig)
+//         addWifiConfig(newSsid, newPassword);
+        
+//         Serial.println("Updated WiFi configurations:");
+//         Serial.println(readWiFiConfig());
+//     } else {
+//         Serial.println("Failed to connect and hit timeout");
+//         ESP.restart();
+//     }
+// }
